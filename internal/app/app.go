@@ -9,6 +9,7 @@ import (
 
 	"github.com/Yeabsirashimelis/workout-tracking-api/internal/api"
 	"github.com/Yeabsirashimelis/workout-tracking-api/internal/store"
+	"github.com/Yeabsirashimelis/workout-tracking-api/migrations"
 )
 
 type Application struct {
@@ -24,12 +25,18 @@ func NewApplication() (*Application, error){
 		return nil, err
 	}
 
+	err = store.MigrateFS(pgDB, migrations.FS, ".")
+	if err != nil {
+		panic(err)
+	}
+
 	logger := log.New(os.Stdout,"",log.Ldate | log.Ltime )
 
 //our store will go here
 
 //our handlers will go here
-workoutHandler := api.NewWorkoutHandler()
+workoutStore := store.NewPostgresWorkoutStore(pgDB)
+workoutHandler := api.NewWorkoutHandler(workoutStore)
 
 	app := &Application{
 		Logger: logger,
