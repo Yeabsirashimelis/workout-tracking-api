@@ -12,6 +12,9 @@ import (
 	"github.com/Yeabsirashimelis/workout-tracking-api/migrations"
 )
 
+
+
+
 type Application struct {
 	Logger *log.Logger
 	WorkoutHandler *api.WorkoutHandler
@@ -36,7 +39,7 @@ func NewApplication() (*Application, error){
 
 //our handlers will go here
 workoutStore := store.NewPostgresWorkoutStore(pgDB)
-workoutHandler := api.NewWorkoutHandler(workoutStore)
+workoutHandler := api.NewWorkoutHandler(workoutStore, logger)
 
 	app := &Application{
 		Logger: logger,
@@ -46,7 +49,7 @@ workoutHandler := api.NewWorkoutHandler(workoutStore)
 return app, nil
 }
 
-//passing things to params by value wil/ copy it entirely, the request here is a pointer b/c of like that
+//passing things to params by value will copy it entirely, the request here is a pointer b/c of like that
 // b/c copying large requests will be inefficient
 func(a *Application) HealthCheck(w http.ResponseWriter, r *http.Request){
 	fmt.Fprintf(w, "Status is available\n")
