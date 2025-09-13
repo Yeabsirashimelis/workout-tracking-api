@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/Yeabsirashimelis/workout-tracking-api/internal/api"
+	"github.com/Yeabsirashimelis/workout-tracking-api/internal/middleware"
 	"github.com/Yeabsirashimelis/workout-tracking-api/internal/store"
 	"github.com/Yeabsirashimelis/workout-tracking-api/migrations"
 )
@@ -18,6 +19,9 @@ import (
 type Application struct {
 	Logger *log.Logger
 	WorkoutHandler *api.WorkoutHandler
+	UserHandler *api.UserHandler
+	TokenHandler *api.TokenHandler
+    Middleware middleware.UserMiddleware
 	DB *sql.DB
 }
 
@@ -35,15 +39,26 @@ func NewApplication() (*Application, error){
 
 	logger := log.New(os.Stdout,"",log.Ldate | log.Ltime )
 
-//our store will go here
+
+//our stores will go here
+workoutStore := store.NewPostgresWorkoutStore(pgDB)
+userStore := store.NewPostgresUserStore(pgDB)
+tokenStore := store.NewPostgresTokenStore(pgDB)
+
 
 //our handlers will go here
-workoutStore := store.NewPostgresWorkoutStore(pgDB)
+
 workoutHandler := api.NewWorkoutHandler(workoutStore, logger)
+userHandler := api.NewUserHandler(userStore, logger)
+tokenHandler := api.NewTokenHandler(tokenStore, userStore, logger)
+middlewareHandler := middleware.UserMiddleware{Userstore: userStore}
 
 	app := &Application{
 		Logger: logger,
 		WorkoutHandler: workoutHandler,
+		UserHandler: userHandler,
+		TokenHandler: tokenHandler,
+		Middleware: middlewareHandler,
 		DB: pgDB,
 	}
 return app, nil

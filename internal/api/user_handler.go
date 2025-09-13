@@ -1,11 +1,14 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
+	"net/http"
 	"regexp"
 
 	"github.com/Yeabsirashimelis/workout-tracking-api/internal/store"
+	"github.com/Yeabsirashimelis/workout-tracking-api/internal/utils"
 )
 
 
@@ -42,7 +45,7 @@ func (h *UserHandler) ValidateRegisterRequest(req *registerUserRequest)error {
 		return errors.New("email is required")
 	}
 
-    emailRegex := regexp.MustCompile(`^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}$`)
+    emailRegex := regexp.MustCompile(`^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$`)
 	if !emailRegex.MatchString(req.Email){
 		return errors.New("invalid email format")
 	}
@@ -53,4 +56,45 @@ func (h *UserHandler) ValidateRegisterRequest(req *registerUserRequest)error {
 	}
 
 	return nil
+}
+
+func (h *UserHandler) HandleRegisterUser(w http.ResponseWriter, r *http.Request) {
+ var req registerUserRequest
+
+ err := json.NewDecoder(r.Body).Decode(&req)
+ if err != nil {
+	h.logger.Printf("ERROR: decoding register request: %v", err)
+	utils.WriteJSON(w, http.StatusBadRequest, utils.Envelope{"error":"invalid request payload"})
+	return
+ }
+
+ err = h.ValidateRegisterRequest(&req)
+ if err != nil {
+	utils.WriteJSON(w, http.StatusBadRequest, utils.Envelope{"error": err.Error()})
+	return
+ }
+
+ user := &store.User{
+	Username: req.Username,
+	Email: req.Email,
+ }
+ if req.Bio != "" {
+	user.Bio = req.Bio
+ }
+
+ err = user.PasswordHash.Set(req.Password)
+ if err != nil {
+	h.logger.Printf("ERROR: hashing password %v", err)
+	utils.WriteJSON(w, http.StatusInternalServerError, utils.Envelope{"error":"internal server error"})
+	return
+ }
+
+ err = h.userStore.CreateUser(user)
+  if err != nil {
+	h.logger.Printf("ERROR: registering user %v", err)
+	utils.WriteJSON(w, http.StatusInternalServerError, utils.Envelope{"error":"internal server error"})
+	return
+ }
+
+   utils.WriteJSON(w, http.StatusCreated, utils.Envelope{"user": user})
 }
